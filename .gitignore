@@ -1,0 +1,19 @@
+# VORAX Monorepo Git Ignore
+/target/
+**/target/
+*.bin
+*.log
+*.exe
+*.o
+*.a
+*.so
+*.dll
+*.pyc
+__pycache__/
+.env
+.env.local
+node_modules/
+.vscode/
+.idea/
+build/
+sdkconfig
