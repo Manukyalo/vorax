@@ -104,7 +104,7 @@ mod tests {
         // A perfectly linear phase series should flatten to near-zero after detrending
         let mut phases: Vec<f32> = (0..64).map(|i| i as f32 * 0.1).collect();
         remove_linear_trend(&mut phases);
-        let max_residual = phases.iter().map(|p| p.abs()).cloned().fold(0.0f32, f32::max);
+        let max_residual = phases.iter().map(|p| p.abs()).fold(0.0f32, f32::max);
         assert!(max_residual < 0.001, "residual too large: {}", max_residual);
     }
 }

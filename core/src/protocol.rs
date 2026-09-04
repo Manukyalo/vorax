@@ -157,8 +157,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn header_wire_size_is_18_bytes() {
-        assert_eq!(CsiPacketHeader::WIRE_SIZE, 18);
+    fn header_wire_size_is_20_bytes() {
+        assert_eq!(CsiPacketHeader::WIRE_SIZE, 20);
     }
 
     #[test]

@@ -59,15 +59,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             // Periodically log telemetry
             if frame_count % 400 == 0 {
+                let node_id = frame.header.node_id;
+                let seq = frame.header.sequence_number;
+                let sc_count = frame.header.subcarrier_count;
                 let mean_amp: f32 = amplitudes.iter().sum::<f32>() / amplitudes.len() as f32;
                 let center_amp = amplitudes.get(32).copied().unwrap_or(0.0);
                 info!(
                     "📡 [DSP NODE {:02}] Seq={:06} | MeanAmp={:.2} | CenterAmp={:.2} | Subcarriers={}",
-                    frame.header.node_id,
-                    frame.header.sequence_number,
+                    node_id,
+                    seq,
                     mean_amp,
                     center_amp,
-                    frame.header.subcarrier_count
+                    sc_count
                 );
             }
         }

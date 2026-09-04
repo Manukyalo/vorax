@@ -127,7 +127,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         seq = seq.wrapping_add(1);
 
         if seq % 1000 == 0 {
-            println!("  [SIM] Sent {} packets (latest timestamp: {} us)", seq, header.timestamp_us);
+            let ts = header.timestamp_us;
+            println!("  [SIM] Sent {} packets (latest timestamp: {} us)", seq, ts);
         }
     }
 }
