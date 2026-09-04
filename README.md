@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # VORAX
 
 **Camera-free spatial intelligence — built on WiFi physics, not pixels.**
@@ -137,3 +138,6 @@ VORAX is **privacy-by-design**:
 ## License
 
 Proprietary. All rights reserved. © 2026 VORAX.
+=======
+# vorax
+>>>>>>> d1db27cfb9b891038bf7e75e6b211896756bd64f
