@@ -1,0 +1,12 @@
+{
+  "name": "vorax-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "dashboard"
+  ],
+  "scripts": {
+    "build": "npm --workspace=dashboard run build",
+    "dev": "npm --workspace=dashboard run dev"
+  }
+}

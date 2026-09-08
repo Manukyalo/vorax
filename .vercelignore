@@ -1,0 +1,9 @@
+node_modules
+.git
+.turbo
+.next
+core/target
+dashboard/node_modules
+firmware/build
+target
+dist
