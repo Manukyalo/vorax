@@ -1,0 +1,24 @@
+[package]
+name    = "vorax-gateway"
+version = "0.1.0"
+edition = "2021"
+description = "VORAX Enterprise Gateway — ONVIF Profile M, SIA DC-09, and MQTT/ROS2 bridge"
+
+[[bin]]
+name = "vorax-gateway"
+path = "src/main.rs"
+
+[dependencies]
+tokio              = { version = "1",    features = ["full"] }
+tokio-tungstenite  = "0.26"
+futures-util       = "0.3"
+serde              = { version = "1",    features = ["derive"] }
+serde_json         = "1"
+clap               = { version = "4",    features = ["derive"] }
+anyhow             = "1"
+tracing            = "0.1"
+tracing-subscriber = { version = "0.3",  features = ["env-filter"] }
+chrono             = { version = "0.4",  features = ["serde"] }
+uuid               = { version = "1",    features = ["v4"] }
+rumqttc            = { version = "0.24", default-features = false }
+reqwest            = { version = "0.12", default-features = false }

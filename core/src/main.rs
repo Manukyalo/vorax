@@ -16,6 +16,7 @@ mod protocol;
 mod ingest;
 mod dsp;
 mod spatial;
+mod audit;
 
 use ingest::spawn_ingest;
 use dsp::{unwrap_phase, remove_linear_trend};
@@ -48,6 +49,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ws_bind: SocketAddr = "0.0.0.0:8765".parse()?;
     broadcaster.clone().start_server(ws_bind).await?;
 
+    // Open the immutable core event audit log
+    let core_audit = Arc::new(
+        audit::CoreAuditLogger::open("vorax-events.jsonl")
+            .expect("Failed to open core audit log vorax-events.jsonl"),
+    );
+    info!("Core audit log: vorax-events.jsonl");
+
     let handle = spawn_ingest(args.bind).await?;
     let stats = handle.stats.clone();
     let rx = handle.rx;
@@ -55,7 +63,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let stats_ref = stats.clone();
 
     // Background dedicated DSP & Spatial worker thread (pinned to numerical crunching)
+    let audit_ref = core_audit.clone();
     std::thread::spawn(move || {
+        let audit = audit_ref;
         let mut frame_count: u64 = 0;
         let mut dispatcher = dsp::StateDispatcher::new(200.0, dsp::doppler::DEFAULT_CARRIER_FREQ_HZ);
         let music = spatial::MusicEngine2D::new(16, 1);
@@ -150,13 +160,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     target_x: latest_target.x,
                     target_y: latest_target.y,
                     target_z: latest_target.z,
-                    alert_state: alert,
+                    alert_state: alert.clone(),
                     presence_detected: dsp_output.presence_detected,
                     presence_confidence: dsp_output.confidence,
                     amplitudes: amplitudes.clone(),
                     phases: phases.clone(),
                 });
             }
+
+            // Core event audit — transition-based, O(1) per frame
+            audit.maybe_log(
+                ts, seq, node_id,
+                &alert,
+                dsp_output.presence_detected,
+                dsp_output.confidence,
+                latest_target.x, latest_target.y, latest_target.z,
+                hr, rr, hrv, velocity,
+            );
 
             // Periodically log telemetry
             if frame_count % 400 == 0 {

@@ -191,8 +191,10 @@ mod tests {
             assert_eq!(bytes.len(), 20 + 64 * 2);
 
             let header = CsiPacketHeader::from_bytes(&bytes).expect("Header should be valid");
-            assert_eq!(header.node_id, (node_idx as u16) + 1);
-            assert_eq!(header.subcarrier_count, 64);
+            let node_id = header.node_id;
+            let subcarrier_count = header.subcarrier_count;
+            assert_eq!(node_id, (node_idx as u16) + 1);
+            assert_eq!(subcarrier_count, 64);
         }
     }
 

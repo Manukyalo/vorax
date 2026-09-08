@@ -59,3 +59,18 @@ graph TD
 | **M3-03** | Packet Builder | `firmware/main/packet_builder.c` | Microsecond clock serialization from `esp_timer_get_time()` and 20-byte VORAX header formatting | 🟢 Complete |
 | **M3-04** | High-Speed UDP Multicast | `firmware/main/udp_sender.c` | Dedicated FreeRTOS task pinned to Core 1 multicasting 200–500 Hz UDP frames | 🟢 Complete |
 | **M3-05** | Flashing & Deployment Scripts | `firmware/flash.bat` / `flash.sh` | One-click build, flash, and serial monitor automation scripts (`idf.py flash monitor`) | 🟢 Complete |
+
+---
+
+## 4. Phase 4: Enterprise Physical Security Integration & Forensics Gateways (`gateways/`)
+**Objective:** Bridge real-time spatial RF presence into commercial VMS, central station alarm receivers, and robotics brokers with immutable forensic audit logging.
+
+| Task ID | Component | File Target | Scope Description | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| **P4-01** | Gateway Monorepo Workspace | `Cargo.toml`, `gateways/Cargo.toml` | Establishes multi-crate workspace for `core` and `vorax-gateway` | 🟢 Complete |
+| **P4-02** | Event Classifier & Translation | `gateways/src/event.rs` | Translates raw telemetry into discrete `VoraxEvent` lifecycle states with debounce & zone tagging | 🟢 Complete |
+| **P4-03** | ONVIF Profile M Push | `gateways/src/onvif.rs` | SOAP 1.2 WS-BaseNotification push to VMS (Milestone XProtect, Genetec, Axis ACS) | 🟢 Complete |
+| **P4-04** | SIA DC-09 / Contact ID | `gateways/src/sia_dc09.rs` | TCP socket dispatcher with Contact ID (CID) format and CRC-16/CCITT verification | 🟢 Complete |
+| **P4-05** | MQTT / ROS2 Bridge | `gateways/src/mqtt.rs` | Industrial MQTT pub/sub with QoS 1 for safety triggers and QoS 0 for trajectory streams | 🟢 Complete |
+| **P4-06** | Forensic Audit Logging | `core/src/audit.rs`, `gateways/src/audit.rs` | Dual-tier append-only JSONL audit logs for core state transitions and gateway dispatches | 🟢 Complete |
+| **P4-07** | Edge Containerization | `gateways/Dockerfile` | Multi-stage Docker deployment for edge NUCs, IPCs, and Raspberry Pi 4 | 🟢 Complete |
