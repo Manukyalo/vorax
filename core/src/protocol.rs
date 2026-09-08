@@ -12,7 +12,7 @@ pub const PACKET_MAGIC: u16 = 0x5658;
 pub const MAX_SUBCARRIERS: usize = 128;
 
 /// Raw CSI packet header — matches `#[repr(C, packed)]` on firmware side.
-/// Total size: 18 bytes.
+/// Total size: 20 bytes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(C, packed)]
 pub struct CsiPacketHeader {

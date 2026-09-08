@@ -1,0 +1,3 @@
+-I.
+-Imain
+-Wno-everything

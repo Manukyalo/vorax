@@ -15,6 +15,7 @@ use tracing_subscriber::FmtSubscriber;
 mod protocol;
 mod ingest;
 mod dsp;
+mod spatial;
 
 use ingest::spawn_ingest;
 use dsp::{unwrap_phase, remove_linear_trend};
@@ -53,10 +54,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ws_out = broadcaster.clone();
     let stats_ref = stats.clone();
 
-    // Background dedicated DSP worker thread (pinned to numerical crunching)
+    // Background dedicated DSP & Spatial worker thread (pinned to numerical crunching)
     std::thread::spawn(move || {
         let mut frame_count: u64 = 0;
-        let start_time = std::time::Instant::now();
+        let mut dispatcher = dsp::StateDispatcher::new(200.0, dsp::doppler::DEFAULT_CARRIER_FREQ_HZ);
+        let music = spatial::MusicEngine2D::new(16, 1);
+        let multilaterator = spatial::Multilaterator::new(6.0, 6.0, 3.0);
+        let mut voxel_grid = spatial::VoxelOccupancyGrid::new();
+        let mut latest_target = spatial::Point3D::new(3.0, 3.0, 1.0);
+        let mut node_obs_map = std::collections::HashMap::new();
+
         while let Ok(frame) = rx.recv() {
             frame_count += 1;
             
@@ -68,20 +75,66 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             unwrap_phase(&mut phases);
             remove_linear_trend(&mut phases);
 
+            // Execute Phase 2 Dual-Mode Motion & Biometrics Pipeline
+            let dsp_output = dispatcher.dispatch(&amplitudes);
+
             let node_id = frame.header.node_id;
             let seq = frame.header.sequence_number;
-            let sc_count = frame.header.subcarrier_count;
             let ts = frame.header.timestamp_us;
             let mean_amp: f32 = amplitudes.iter().sum::<f32>() / amplitudes.len() as f32;
             let center_amp = amplitudes.get(32).copied().unwrap_or(0.0);
 
+            // 3D Spatial Localization: Run 2D-MUSIC on periodic frames
+            if frame_count % 7 == 0 {
+                let complex_sc: Vec<spatial::Complex32> = amplitudes
+                    .iter()
+                    .zip(phases.iter())
+                    .map(|(&a, &p)| spatial::Complex32::from_polar(a, p))
+                    .collect();
+
+                let cov = spatial::compute_smoothed_covariance(&complex_sc, 16);
+                let peak = music.estimate_peak(&cov);
+
+                let node_pos = match node_id {
+                    1 => spatial::Point3D::new(0.2, 0.2, 1.2),
+                    2 => spatial::Point3D::new(5.8, 0.2, 1.2),
+                    3 => spatial::Point3D::new(5.8, 5.8, 1.2),
+                    4 => spatial::Point3D::new(0.2, 5.8, 1.2),
+                    _ => spatial::Point3D::new(0.2, 0.2, 1.2),
+                };
+
+                node_obs_map.insert(
+                    node_id,
+                    spatial::NodeObservation {
+                        node_id,
+                        node_position: node_pos,
+                        peak,
+                    },
+                );
+
+                if node_obs_map.len() >= 3 {
+                    let obs_vec: Vec<spatial::NodeObservation> = node_obs_map.values().cloned().collect();
+                    if let Some(solved) = multilaterator.solve_position_2d(&obs_vec) {
+                        latest_target = solved;
+                        voxel_grid.update_target(&latest_target, dsp_output.confidence);
+                    }
+                }
+            }
+
+            let (rr, hr, hrv, alert) = match &dsp_output.vitals {
+                Some(v) => (
+                    v.respiration_rate_brpm,
+                    v.heart_rate_bpm,
+                    v.hrv_rmssd_ms,
+                    format!("{:?}", v.alert_state),
+                ),
+                None => (15.0, 72.0, 35.0, "Nominal".to_string()),
+            };
+            let velocity = dsp_output.doppler.as_ref().map(|d| d.peak_velocity_m_s).unwrap_or(0.0);
+
             // Stream frames to WebSocket clients at ~30 FPS (every 7th frame at 200 Hz)
             if frame_count % 7 == 0 {
                 let snap = stats_ref.snapshot();
-                let elapsed = start_time.elapsed().as_secs_f32();
-                // Real-time extracted physiological signals (Doppler response)
-                let hr = 72.0 + (elapsed * 0.2).sin() * 4.0;
-                let rr = 14.5 + (elapsed * 0.1).cos() * 1.5;
 
                 ws_out.broadcast(&TelemetryPayload {
                     node_id,
@@ -92,8 +145,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     center_amp,
                     heart_rate_bpm: hr,
                     respiration_rate_brpm: rr,
-                    presence_detected: true,
-                    presence_confidence: 0.98,
+                    hrv_rmssd_ms: hrv,
+                    velocity_m_s: velocity,
+                    target_x: latest_target.x,
+                    target_y: latest_target.y,
+                    target_z: latest_target.z,
+                    alert_state: alert,
+                    presence_detected: dsp_output.presence_detected,
+                    presence_confidence: dsp_output.confidence,
                     amplitudes: amplitudes.clone(),
                     phases: phases.clone(),
                 });
@@ -102,12 +161,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Periodically log telemetry
             if frame_count % 400 == 0 {
                 info!(
-                    "📡 [DSP NODE {:02}] Seq={:06} | MeanAmp={:.2} | CenterAmp={:.2} | Subcarriers={}",
+                    "📡 [DSP NODE {:02}] Seq={:06} | State={:?} | MeanAmp={:.2} | HR={:.1} BPM | RR={:.1} BrPM | Conf={:.2}",
                     node_id,
                     seq,
+                    dsp_output.state,
                     mean_amp,
-                    center_amp,
-                    sc_count
+                    hr,
+                    rr,
+                    dsp_output.confidence
                 );
             }
         }

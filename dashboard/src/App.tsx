@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { SpatialCanvas } from './components/SpatialCanvas';
-import { Activity, ShieldCheck, Wifi, Zap, Bell } from 'lucide-react';
+import { Activity, ShieldCheck, Wifi, Zap, Bell, Compass } from 'lucide-react';
 
 interface TelemetryData {
   node_id: number;
@@ -10,6 +10,12 @@ interface TelemetryData {
   center_amp: number;
   heart_rate_bpm: number;
   respiration_rate_brpm: number;
+  hrv_rmssd_ms?: number;
+  velocity_m_s?: number;
+  target_x?: number;
+  target_y?: number;
+  target_z?: number;
+  alert_state?: string;
   presence_detected: boolean;
   presence_confidence: number;
   amplitudes: number[];
@@ -21,32 +27,87 @@ export function App() {
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
-    const ws = new WebSocket('ws://localhost:8765');
+    let ws: WebSocket | null = null;
+    let fallbackInterval: number | null = null;
 
-    ws.onopen = () => {
-      setConnected(true);
-    };
+    try {
+      ws = new WebSocket('ws://localhost:8765');
 
-    ws.onmessage = (event) => {
-      try {
-        const payload: TelemetryData = JSON.parse(event.data);
-        setData(payload);
-      } catch (err) {
-        console.error('Failed to parse telemetry', err);
-      }
-    };
+      ws.onopen = () => {
+        setConnected(true);
+      };
 
-    ws.onclose = () => {
+      ws.onmessage = (event) => {
+        try {
+          const payload: TelemetryData = JSON.parse(event.data);
+          setData(payload);
+        } catch (err) {
+          console.error('Failed to parse telemetry', err);
+        }
+      };
+
+      ws.onerror = () => {
+        setConnected(false);
+      };
+
+      ws.onclose = () => {
+        setConnected(false);
+      };
+    } catch {
       setConnected(false);
-    };
+    }
+
+    // Client-side fallback simulation for cloud hosting (Vercel / phone demo)
+    fallbackInterval = window.setInterval(() => {
+      setData((prev) => {
+        // If live websocket is already streaming, don't overwrite
+        if (ws && ws.readyState === WebSocket.OPEN) return prev;
+
+        const now = Date.now() / 1000;
+        const hr = 72.0 + Math.sin(now * 0.4) * 3.5;
+        const rr = 14.5 + Math.cos(now * 0.2) * 1.2;
+        const amps = Array.from({ length: 64 }, (_, i) => {
+          const base = 22 + Math.sin(i * 0.25) * 6;
+          const pert = (i >= 20 && i <= 44) ? Math.sin(now * 2) * 4 : 0;
+          return base + pert;
+        });
+
+        return {
+          node_id: 1,
+          seq: (prev?.seq || 0) + 1,
+          pps: 200,
+          mean_amp: 24.3,
+          center_amp: 24.8,
+          heart_rate_bpm: hr,
+          respiration_rate_brpm: rr,
+          hrv_rmssd_ms: 38.5,
+          velocity_m_s: 0.08,
+          target_x: 3.0 + Math.sin(now * 0.5) * 1.5,
+          target_y: 3.0 + Math.cos(now * 0.5) * 1.5,
+          target_z: 1.1 + Math.sin(now) * 0.05,
+          alert_state: 'Nominal',
+          presence_detected: true,
+          presence_confidence: 0.984,
+          amplitudes: amps,
+          phases: Array(64).fill(0),
+        };
+      });
+    }, 50); // ~20 FPS updates
 
     return () => {
-      ws.close();
+      if (ws) ws.close();
+      if (fallbackInterval) clearInterval(fallbackInterval);
     };
   }, []);
 
   const hr = data?.heart_rate_bpm ? data.heart_rate_bpm.toFixed(1) : '72.0';
   const rr = data?.respiration_rate_brpm ? data.respiration_rate_brpm.toFixed(1) : '14.5';
+  const hrv = data?.hrv_rmssd_ms ? data.hrv_rmssd_ms.toFixed(1) : '38.5';
+  const velocity = data?.velocity_m_s ? data.velocity_m_s.toFixed(2) : '0.00';
+  const targetX = data?.target_x !== undefined ? data.target_x.toFixed(2) : '3.00';
+  const targetY = data?.target_y !== undefined ? data.target_y.toFixed(2) : '3.00';
+  const targetZ = data?.target_z !== undefined ? data.target_z.toFixed(2) : '1.00';
+  const alertState = data?.alert_state || 'Nominal';
   const pps = data?.pps || 200;
   const seq = data?.seq || 0;
 
@@ -121,6 +182,11 @@ export function App() {
             presence={data?.presence_detected ?? true}
             heartRate={data?.heart_rate_bpm ?? 72}
             amplitudes={data?.amplitudes ?? []}
+            targetPos={{
+              x: data?.target_x ?? 3.0,
+              y: data?.target_y ?? 3.0,
+              z: data?.target_z ?? 1.0,
+            }}
           />
 
           {/* Overlay HUD Badges */}
@@ -139,6 +205,26 @@ export function App() {
                 <div style={{ fontSize: '0.65rem', color: '#8a99b5', letterSpacing: '0.05em' }}>INGEST THROUGHPUT</div>
                 <div className="mono" style={{ fontSize: '0.95rem', fontWeight: 700, color: '#fff' }}>
                   {pps} <span style={{ fontSize: '0.7rem', color: '#8a99b5' }}>PKTS/S</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="glass-panel" style={{ padding: '12px 18px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Activity style={{ color: '#ffb703', width: 20, height: 20 }} />
+              <div>
+                <div style={{ fontSize: '0.65rem', color: '#8a99b5', letterSpacing: '0.05em' }}>DOPPLER VELOCITY</div>
+                <div className="mono" style={{ fontSize: '0.95rem', fontWeight: 700, color: '#ffb703' }}>
+                  {velocity} <span style={{ fontSize: '0.7rem', color: '#8a99b5' }}>M/S</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="glass-panel" style={{ padding: '12px 18px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Compass style={{ color: '#00f0ff', width: 20, height: 20 }} />
+              <div>
+                <div style={{ fontSize: '0.65rem', color: '#8a99b5', letterSpacing: '0.05em' }}>3D SPATIAL FIX (X, Y, Z)</div>
+                <div className="mono" style={{ fontSize: '0.95rem', fontWeight: 700, color: '#00f0ff' }}>
+                  [{targetX}, {targetY}, {targetZ}] <span style={{ fontSize: '0.7rem', color: '#8a99b5' }}>M</span>
                 </div>
               </div>
             </div>
@@ -166,7 +252,22 @@ export function App() {
               <span style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.1em', color: '#8a99b5' }}>
                 BIOMETRIC TELEMETRY
               </span>
-              <Activity style={{ color: '#ff3366', width: 16, height: 16 }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span
+                  style={{
+                    fontSize: '0.65rem',
+                    padding: '2px 8px',
+                    borderRadius: 4,
+                    fontWeight: 700,
+                    background: alertState === 'Nominal' ? 'rgba(0, 255, 136, 0.15)' : 'rgba(255, 51, 102, 0.2)',
+                    color: alertState === 'Nominal' ? '#00ff88' : '#ff3366',
+                    border: `1px solid ${alertState === 'Nominal' ? 'rgba(0, 255, 136, 0.3)' : 'rgba(255, 51, 102, 0.4)'}`,
+                  }}
+                >
+                  {alertState.toUpperCase()}
+                </span>
+                <Activity style={{ color: '#ff3366', width: 16, height: 16 }} />
+              </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -186,7 +287,7 @@ export function App() {
             </div>
 
             <div style={{ marginTop: 14, fontSize: '0.7rem', color: '#8a99b5', display: 'flex', justifyContent: 'space-between' }}>
-              <span>HRV (rMSSD): <strong style={{ color: '#fff' }}>42 ms</strong></span>
+              <span>HRV (rMSSD): <strong style={{ color: '#fff' }}>{hrv} ms</strong></span>
               <span>CONFIDENCE: <strong style={{ color: '#00ff88' }}>98.4%</strong></span>
             </div>
           </div>

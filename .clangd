@@ -1,0 +1,13 @@
+CompileFlags:
+  Add:
+    - -Ifirmware
+    - -Ifirmware/main
+    - -Wno-everything
+
+Diagnostics:
+  Suppress:
+    - pp_file_not_found
+    - typecheck_decl_incomplete_type
+    - call_to_undeclared_function
+    - use_of_undeclared_identifier
+    - unknown_typename

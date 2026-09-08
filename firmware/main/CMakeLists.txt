@@ -1,0 +1,17 @@
+idf_component_register(
+    SRCS 
+        "main.c"
+        "csi_rx.c"
+        "packet_builder.c"
+        "udp_sender.c"
+    INCLUDE_DIRS 
+        "."
+        ".."
+    REQUIRES 
+        esp_wifi 
+        esp_event 
+        nvs_flash 
+        esp_timer 
+        freertos 
+        lwip
+)

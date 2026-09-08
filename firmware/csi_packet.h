@@ -16,7 +16,7 @@ extern "C" {
 #define VORAX_PACKET_MAGIC 0x5658 // "VX"
 
 /**
- * @brief 18-byte packed header sent before subcarrier data
+ * @brief 20-byte packed header sent before subcarrier data
  */
 typedef struct __attribute__((packed)) {
     uint16_t magic;            /**< 0x5658 ("VX") */

@@ -17,6 +17,8 @@ use tokio::time::interval;
 
 #[path = "../protocol.rs"]
 mod protocol;
+mod mesh;
+
 use protocol::{CsiPacketHeader, SubcarrierComplex, PACKET_MAGIC};
 
 #[derive(Parser, Debug)]
@@ -26,27 +28,37 @@ struct Args {
     #[arg(short, long, default_value = "127.0.0.1:5555")]
     target: SocketAddr,
 
-    /// Node ID to impersonate
+    /// Node ID to impersonate (in single-node mode)
     #[arg(short, long, default_value_t = 1)]
     node_id: u16,
 
-    /// Transmission rate in Hz
+    /// Transmission rate in Hz (per node)
     #[arg(short, long, default_value_t = 200)]
     rate: u64,
 
     /// Number of subcarriers (64 for HT20)
     #[arg(short, long, default_value_t = 64)]
     subcarriers: u8,
+
+    /// Enable 4-Node Synchronized Spatial Mesh simulation
+    #[arg(short, long, default_value_t = false)]
+    mesh: bool,
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
-    println!("📡 [VORAX SIMULATOR] Streaming node_id={} to {} @ {} Hz ({} subcarriers)",
+
+    let socket = UdpSocket::bind("0.0.0.0:0").await?;
+
+    if args.mesh {
+        return run_mesh_simulation(socket, args.target, args.rate).await;
+    }
+
+    println!("📡 [VORAX SIMULATOR] Streaming single node_id={} to {} @ {} Hz ({} subcarriers)",
         args.node_id, args.target, args.rate, args.subcarriers
     );
 
-    let socket = UdpSocket::bind("0.0.0.0:0").await?;
     let period_micros = 1_000_000 / args.rate;
     let mut ticker = interval(Duration::from_micros(period_micros));
 
@@ -132,3 +144,46 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 }
+
+async fn run_mesh_simulation(
+    socket: UdpSocket,
+    target: SocketAddr,
+    rate_per_node: u64,
+) -> Result<(), Box<dyn std::error::Error>> {
+    println!(
+        "🌐 [VORAX MESH SIMULATOR] Launching 4-Node Multi-Static RF Mesh @ {} Hz/node ({} pkts/sec aggregate) -> {}",
+        rate_per_node,
+        rate_per_node * 4,
+        target
+    );
+
+    let period_micros = 1_000_000 / rate_per_node;
+    let mut ticker = interval(Duration::from_micros(period_micros));
+    let dt = period_micros as f32 / 1_000_000.0;
+
+    let mut sim = mesh::SpatialMeshSimulator::new();
+    let start_time = std::time::Instant::now();
+    let mut total_mesh_frames: u64 = 0;
+
+    loop {
+        ticker.tick().await;
+        let ts = start_time.elapsed().as_micros() as u64;
+
+        sim.step(dt);
+
+        for node_idx in 0..4 {
+            let pkt = sim.generate_node_packet(node_idx, ts);
+            socket.send_to(&pkt, target).await?;
+            total_mesh_frames += 1;
+        }
+
+        if total_mesh_frames % 2000 == 0 {
+            let pos = sim.target_position(sim.elapsed_time_sec);
+            println!(
+                "  [MESH-SIM] Broadcast {} frames across 4 nodes | Target Position: ({:.2}, {:.2}, {:.2})m",
+                total_mesh_frames, pos.x, pos.y, pos.z
+            );
+        }
+    }
+}
+

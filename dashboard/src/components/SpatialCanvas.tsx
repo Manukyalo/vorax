@@ -5,11 +5,14 @@ interface SpatialCanvasProps {
   presence: boolean;
   heartRate: number;
   amplitudes: number[];
+  targetPos?: { x: number; y: number; z: number };
 }
 
-export const SpatialCanvas: React.FC<SpatialCanvasProps> = ({ heartRate }) => {
+export const SpatialCanvas: React.FC<SpatialCanvasProps> = ({ heartRate, targetPos }) => {
   const mountRef = useRef<HTMLDivElement>(null);
   const humanGroupRef = useRef<THREE.Group | null>(null);
+  const targetPosRef = useRef(targetPos);
+  targetPosRef.current = targetPos;
   const particlesRef = useRef<THREE.Points | null>(null);
 
   useEffect(() => {
@@ -108,13 +111,26 @@ export const SpatialCanvas: React.FC<SpatialCanvasProps> = ({ heartRate }) => {
       animId = requestAnimationFrame(animate);
       const t = clock.getElapsedTime();
 
-      // Floating micro-motion modulated by contactless heart rate
+      // Floating micro-motion modulated by contactless heart rate & 3D resolved target position
       if (humanGroupRef.current) {
         const hrBps = (heartRate || 72) / 60;
         const pulse = Math.sin(t * hrBps * Math.PI * 2) * 0.04;
-        humanGroupRef.current.position.y = 0.6 + pulse;
-        humanGroupRef.current.position.x = Math.sin(t * 0.4) * 0.6; // gentle walking drift
-        humanGroupRef.current.position.z = Math.cos(t * 0.4) * 0.6;
+        const tp = targetPosRef.current;
+
+        if (tp) {
+          // Map from (0..6, 0..6) room space to (-3..3, -3..3) Three.js grid
+          const targetX = tp.x - 3.0;
+          const targetZ = tp.y - 3.0;
+          const targetY = (tp.z || 1.0) - 0.4 + pulse;
+
+          humanGroupRef.current.position.x += (targetX - humanGroupRef.current.position.x) * 0.08;
+          humanGroupRef.current.position.z += (targetZ - humanGroupRef.current.position.z) * 0.08;
+          humanGroupRef.current.position.y += (targetY - humanGroupRef.current.position.y) * 0.08;
+        } else {
+          humanGroupRef.current.position.y = 0.6 + pulse;
+          humanGroupRef.current.position.x = Math.sin(t * 0.3) * 1.6;
+          humanGroupRef.current.position.z = Math.cos(t * 0.3) * 1.6;
+        }
 
         // Dynamic joint articulation
         joints.forEach((joint, idx) => {
