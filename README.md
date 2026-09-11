@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # VORAX
 
 **Camera-free spatial intelligence — built on WiFi physics, not pixels.**
