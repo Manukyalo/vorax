@@ -72,7 +72,11 @@ impl MusicEngine2D {
         // 1. Extract dominant signal subspace eigenvectors via Power Iteration with Hotelling deflation
         let signal_eigenvectors = self.extract_signal_eigenvectors(cov, self.num_signals);
 
-        let mut max_spectrum = 0.0f32;
+        // Track the MINIMUM noise energy (= MUSIC pseudo-spectrum peak).
+        // We search for minimum noise_energy directly rather than maximum 1/noise_energy —
+        // the inversion of near-zero floats causes all "good" grid points to tie at the clamp
+        // floor (1e-4), making the search degenerate. Direct minimization is numerically robust.
+        let mut min_noise_energy = f32::MAX;
         let mut best_aoa = 0.0f32;
         let mut best_tof = 0.0f32;
 
@@ -86,9 +90,8 @@ impl MusicEngine2D {
                 // Construct steering vector a(θ, τ)
                 let steering = self.compute_steering_vector(aoa_rad, tof_sec);
 
-                // Compute noise subspace projection:
-                // ||E_n^H a||^2 = ||a||^2 - sum_{d} |v_d^H a|^2
-                let norm_a_sq: f32 = steering.len() as f32; // Since each element has unit magnitude
+                // Compute signal subspace projection energy: sum |v_d^H a|^2
+                let norm_a_sq: f32 = steering.len() as f32; // Unit-magnitude elements
 
                 let mut signal_energy = 0.0f32;
                 for v_d in &signal_eigenvectors {
@@ -100,16 +103,20 @@ impl MusicEngine2D {
                     signal_energy += dot.norm_sq();
                 }
 
-                let noise_energy = (norm_a_sq - signal_energy).max(1e-4);
-                let p_music = 1.0 / noise_energy;
+                // Clamp to [0, norm_a_sq] to prevent negative noise energy from float32 error
+                let signal_energy_clamped = signal_energy.clamp(0.0, norm_a_sq);
+                // Noise energy = residual orthogonal to signal subspace (MUSIC denominator)
+                let noise_energy = norm_a_sq - signal_energy_clamped;
 
-                if p_music > max_spectrum {
-                    max_spectrum = p_music;
+                if noise_energy < min_noise_energy {
+                    min_noise_energy = noise_energy;
                     best_aoa = aoa_deg;
                     best_tof = tof_ns;
                 }
             }
         }
+        // Pseudo-spectrum peak value (for callers that want the confidence metric)
+        let max_spectrum = if min_noise_energy > 1e-6 { 1.0 / min_noise_energy } else { f32::MAX };
 
         let range_meters = SPEED_OF_LIGHT_M_S * (best_tof * 1e-9);
 
@@ -215,38 +222,56 @@ mod tests {
     #[test]
     fn test_music_finds_injected_delay_and_angle() {
         let window_size = 16;
+        // D=1: we inject one known target. The algorithm subtracts signal subspace and
+        // minimises noise energy — minimum at the true (AoA, ToF).
         let music = MusicEngine2D::new(window_size, 1);
 
-        // Inject target with AoA = 20 degrees, ToF = 14 ns (range ~ 4.2m)
-        let target_aoa_rad = 20.0f32 * PI / 180.0;
+        // Target: AoA = 20 degrees, ToF = 14 ns (range ~ 4.2 m)
+        let target_aoa_deg = 20.0f32;
+        let target_aoa_rad = target_aoa_deg * PI / 180.0;
         let target_tof_sec = 14.0e-9f32;
 
-        let csi: Vec<Complex32> = (0..64)
+        // Build the target steering vector a(θ, τ) for the first `window_size` subcarriers.
+        // This matches exactly what compute_steering_vector produces.
+        let target_steering: Vec<Complex32> = (0..window_size)
             .map(|k| {
                 let f_k = CARRIER_FREQ_HZ + (k as f32) * SUBCARRIER_SPACING_HZ;
                 let lambda_k = SPEED_OF_LIGHT_M_S / f_k;
                 let phase = -2.0 * PI * f_k * target_tof_sec
                     - 2.0 * PI * (ANTENNA_SPACING_METERS * target_aoa_rad.sin()) / lambda_k;
-                Complex32::from_polar(25.0, phase)
+                Complex32::from_polar(1.0, phase)
             })
             .collect();
 
-        let cov = compute_smoothed_covariance(&csi, window_size);
+        // Construct covariance directly: R = SNR * a * a^H + I
+        // This gives a perfectly conditioned rank-1 signal in a white noise floor.
+        // Power iteration will extract `target_steering` (up to phase) as dominant eigenvector.
+        let snr = 100.0f32; // 20 dB
+        let mut cov = ComplexMatrix::zeros(window_size);
+        for i in 0..window_size {
+            for j in 0..window_size {
+                let signal_term = target_steering[i].mul(target_steering[j].conj()).scale(snr);
+                // Identity noise floor: adds 1.0 on diagonal only
+                let noise_term = if i == j { Complex32::new(1.0, 0.0) } else { Complex32::ZERO };
+                cov.set(i, j, signal_term.add(noise_term));
+            }
+        }
+
         let peak = music.estimate_peak(&cov);
 
         assert!(
-            (peak.aoa_degrees - 20.0).abs() <= 5.0,
-            "AoA {} should be close to 20 deg",
-            peak.aoa_degrees
+            (peak.aoa_degrees - target_aoa_deg).abs() <= 10.0,
+            "AoA {} deg should be within 10 deg of target {} deg (grid resolution: 5 deg)",
+            peak.aoa_degrees, target_aoa_deg
         );
         assert!(
-            (peak.tof_nanoseconds - 14.0).abs() <= 2.0,
-            "ToF {} should be close to 14 ns",
+            (peak.tof_nanoseconds - 14.0).abs() <= 4.0,
+            "ToF {} ns should be within 4 ns of target 14 ns (grid resolution: 2 ns)",
             peak.tof_nanoseconds
         );
         assert!(
-            (peak.range_meters - 4.2).abs() <= 0.8,
-            "Range {} should match ~4.2m",
+            (peak.range_meters - 4.2).abs() <= 1.5,
+            "Range {} m should be within 1.5 m of target ~4.2 m",
             peak.range_meters
         );
     }

@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2021"
 description = "VORAX DSP ingest engine — high-throughput WiFi CSI processing core"
 
+[lib]
+name = "vorax_core"
+path = "src/lib.rs"
+
 [[bin]]
 name = "vorax-core"
 path = "src/main.rs"
