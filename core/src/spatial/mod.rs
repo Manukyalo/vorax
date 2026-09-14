@@ -10,8 +10,10 @@ pub mod smoothing;
 pub mod music;
 pub mod multilateration;
 pub mod occupancy;
+pub mod skeleton;
 
 pub use smoothing::{Complex32, ComplexMatrix, compute_smoothed_covariance};
 pub use music::{MusicEngine2D, SpatialPeak};
 pub use multilateration::{Multilaterator, NodeObservation, Point3D};
 pub use occupancy::VoxelOccupancyGrid;
+pub use skeleton::{SkeletonSolver, COCO_KEYPOINT_COUNT, COCO_LIMBS};

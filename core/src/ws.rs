@@ -31,6 +31,7 @@ pub struct TelemetryPayload {
     pub alert_state: String,
     pub presence_detected: bool,
     pub presence_confidence: f32,
+    pub skeleton: Option<Vec<[f32; 3]>>,
     pub amplitudes: Vec<f32>,
     pub phases: Vec<f32>,
 }

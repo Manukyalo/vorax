@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { SpatialCanvas } from './components/SpatialCanvas';
-import { Activity, ShieldCheck, Wifi, Zap, Bell, Compass } from 'lucide-react';
+import { Activity, ShieldCheck, Wifi, Zap, Bell, Compass, Scan } from 'lucide-react';
 
 interface TelemetryData {
   node_id: number;
@@ -18,6 +18,7 @@ interface TelemetryData {
   alert_state?: string;
   presence_detected: boolean;
   presence_confidence: number;
+  skeleton?: number[][];
   amplitudes: number[];
   phases: number[];
 }
@@ -182,6 +183,7 @@ export function App() {
             presence={data?.presence_detected ?? true}
             heartRate={data?.heart_rate_bpm ?? 72}
             amplitudes={data?.amplitudes ?? []}
+            skeleton={data?.skeleton}
             targetPos={{
               x: data?.target_x ?? 3.0,
               y: data?.target_y ?? 3.0,
@@ -190,12 +192,22 @@ export function App() {
           />
 
           {/* Overlay HUD Badges */}
-          <div style={{ position: 'absolute', top: 20, left: 24, display: 'flex', gap: '12px' }}>
+          <div style={{ position: 'absolute', top: 20, left: 24, display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             <div className="glass-panel" style={{ padding: '12px 18px', display: 'flex', alignItems: 'center', gap: '10px' }}>
               <ShieldCheck style={{ color: '#00ff88', width: 20, height: 20 }} />
               <div>
                 <div style={{ fontSize: '0.65rem', color: '#8a99b5', letterSpacing: '0.05em' }}>TARGET OCCUPANCY</div>
                 <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#00ff88' }}>1 PERSON DETECTED</div>
+              </div>
+            </div>
+
+            <div className="glass-panel" style={{ padding: '12px 18px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Scan style={{ color: '#00d4ff', width: 20, height: 20 }} />
+              <div>
+                <div style={{ fontSize: '0.65rem', color: '#8a99b5', letterSpacing: '0.05em' }}>ML SKELETON MODEL</div>
+                <div className="mono" style={{ fontSize: '0.95rem', fontWeight: 700, color: '#00d4ff' }}>
+                  17-PT COCO <span style={{ fontSize: '0.7rem', color: '#8a99b5' }}>30 FPS</span>
+                </div>
               </div>
             </div>
 

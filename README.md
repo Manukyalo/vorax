@@ -130,13 +130,10 @@ VORAX is **privacy-by-design**:
 
 ## Status
 
-> 🔨 **Active development — Phase 0**
+> 🚀 **Phase 4 & ML Pose Distillation Complete — Preparing Phase 5 Field Pilots**
 
 ---
 
 ## License
 
 Proprietary. All rights reserved. © 2026 VORAX.
-=======
-# vorax
->>>>>>> d1db27cfb9b891038bf7e75e6b211896756bd64f

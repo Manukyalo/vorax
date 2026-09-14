@@ -1,3 +1,5 @@
+# pyright: reportMissingImports=false
+# type: ignore
 """
 VORAX Offline Telemetry & Waterfall Visualizer
 

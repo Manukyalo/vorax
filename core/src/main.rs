@@ -73,6 +73,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut voxel_grid = spatial::VoxelOccupancyGrid::new();
         let mut latest_target = spatial::Point3D::new(3.0, 3.0, 1.0);
         let mut node_obs_map = std::collections::HashMap::new();
+        let mut skeleton_solver = spatial::SkeletonSolver::new();
 
         while let Ok(frame) = rx.recv() {
             frame_count += 1;
@@ -145,6 +146,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Stream frames to WebSocket clients at ~30 FPS (every 7th frame at 200 Hz)
             if frame_count % 7 == 0 {
                 let snap = stats_ref.snapshot();
+                let is_fall = alert.contains("Fall") || dsp_output.state == dsp::TargetState::FallSuspected;
+                let skeleton_pts = skeleton_solver.solve_skeleton(&latest_target, velocity, is_fall, 0.035);
 
                 ws_out.broadcast(&TelemetryPayload {
                     node_id,
@@ -163,6 +166,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     alert_state: alert.clone(),
                     presence_detected: dsp_output.presence_detected,
                     presence_confidence: dsp_output.confidence,
+                    skeleton: Some(skeleton_pts),
                     amplitudes: amplitudes.clone(),
                     phases: phases.clone(),
                 });

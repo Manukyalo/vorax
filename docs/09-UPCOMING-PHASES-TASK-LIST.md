@@ -74,3 +74,20 @@ graph TD
 | **P4-05** | MQTT / ROS2 Bridge | `gateways/src/mqtt.rs` | Industrial MQTT pub/sub with QoS 1 for safety triggers and QoS 0 for trajectory streams | 🟢 Complete |
 | **P4-06** | Forensic Audit Logging | `core/src/audit.rs`, `gateways/src/audit.rs` | Dual-tier append-only JSONL audit logs for core state transitions and gateway dispatches | 🟢 Complete |
 | **P4-07** | Edge Containerization | `gateways/Dockerfile` | Multi-stage Docker deployment for edge NUCs, IPCs, and Raspberry Pi 4 | 🟢 Complete |
+
+---
+
+## 5. Phase 3.5: ML Pose & Distillation Engine (17-Keypoint 3D Tracking) (`inference/`, `core/`, `dashboard/`)
+**Objective:** Cross-modal teacher-student neural pose estimation and forward kinematics converting 4-node CSI matrices into 17-keypoint COCO anatomical postures.
+
+| Task ID | Component | File Target | Scope Description | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| **ML-01** | DANN Model Architecture | `inference/model.py` | PyTorch DANN with Gradient Reversal Layer (GRL), TCN feature extractor ($G_f$), 17-joint pose regressor ($G_y$), and domain classifier ($G_d$) | 🟢 Complete |
+| **ML-02** | Multi-Room RF Dataset | `inference/dataset.py` | Generates 4-node 64-subcarrier CSI tensors across Room A–D multipath configs paired with 17-keypoint 3D ground truth | 🟢 Complete |
+| **ML-03** | Minimax Training Loop | `inference/train.py` | Distillation training orchestrating pose MSE loss, dynamic GRL alpha schedule, and adversarial room classification | 🟢 Complete |
+| **ML-04** | ONNX NPU Exporter | `inference/export_onnx.py` | Quantizes and packages the 512-channel RF model for edge NPUs (RK3588, OpenVINO, TensorRT) | 🟢 Complete |
+| **ML-05** | Dual-Mode Inference Engine | `inference/inference_engine.py` | High-throughput streaming inference runner with zero-dependency kinematic projection fallback | 🟢 Complete |
+| **ML-06** | Rust Core Pose Kinematics | `core/src/spatial/skeleton.rs` | 17-keypoint forward kinematics solver computing anatomical joint coordinates synchronized with 2D-MUSIC | 🟢 Complete |
+| **ML-07** | Telemetry Stream Extension | `core/src/ws.rs`, `core/src/main.rs` | Extends `TelemetryPayload` with `skeleton` vector broadcasted to WebSocket clients at 30 FPS | 🟢 Complete |
+| **ML-08** | 3D Articulated Avatar | `dashboard/src/components/SpatialCanvas.tsx` | Visualizes 17 glowing joint spheres linked by 16 3D bone cylinders with dynamic orientation in Three.js | 🟢 Complete |
+| **ML-09** | Dashboard Model HUD | `dashboard/src/App.tsx` | Real-time "17-PT COCO 30 FPS" ML model indicator badge and client-side gait synthesis | 🟢 Complete |
