@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "cd dashboard && npm install && npm run build",
+  "buildCommand": "cd dashboard && npm install && npm install @rolldown/binding-linux-x64-gnu@1.2.7 --no-save && npm run build",
   "outputDirectory": "dashboard/dist",
   "rewrites": [
     {
