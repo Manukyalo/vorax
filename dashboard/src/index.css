@@ -1,15 +1,26 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 :root {
-  --bg-dark: #07090e;
-  --bg-card: rgba(14, 18, 27, 0.75);
-  --border-glow: rgba(0, 240, 255, 0.2);
-  --cyan: #00f0ff;
-  --cyan-glow: rgba(0, 240, 255, 0.4);
-  --emerald: #00ff88;
-  --rose: #ff3366;
-  --text-main: #f0f4fc;
-  --text-muted: #8a99b5;
+  --bg-deep: #06080d;
+  --bg-surface: #0a0d14;
+  --bg-card: rgba(13, 17, 26, 0.78);
+  --bg-card-hover: rgba(18, 24, 38, 0.88);
+  
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-tactical: rgba(0, 240, 255, 0.25);
+  --border-active: rgba(0, 240, 255, 0.6);
+
+  --cyan-precision: #00f0ff;
+  --cyan-glow: rgba(0, 240, 255, 0.35);
+  --emerald-radar: #00ff9d;
+  --emerald-glow: rgba(0, 255, 157, 0.3);
+  --amber-warning: #ffb703;
+  --rose-breach: #ff3366;
+  --rose-glow: rgba(255, 51, 102, 0.35);
+
+  --text-primary: #f0f4fc;
+  --text-secondary: #8e9bb3;
+  --text-tertiary: #525e75;
 }
 
 * {
@@ -19,8 +30,8 @@
 }
 
 body {
-  background-color: var(--bg-dark);
-  color: var(--text-main);
+  background-color: var(--bg-deep);
+  color: var(--text-primary);
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   overflow: hidden;
   height: 100vh;
@@ -28,33 +39,59 @@ body {
   user-select: none;
 }
 
-/* Glassmorphic Cyber Panels */
-.glass-panel {
+/* Tactical Glassmorphic Container */
+.tactical-card {
   background: var(--bg-card);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.glass-panel:hover {
-  border-color: var(--border-glow);
-  box-shadow: 0 8px 32px 0 rgba(0, 240, 255, 0.08);
+.tactical-card:hover {
+  border-color: var(--border-tactical);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55), 0 0 15px rgba(0, 240, 255, 0.06);
 }
 
 .mono {
   font-family: 'JetBrains Mono', monospace;
 }
 
-/* Custom Scrollbar */
+/* Pulse animation for active radar sensors */
+@keyframes radar-pulse {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+    filter: drop-shadow(0 0 6px var(--emerald-radar));
+  }
+  100% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+}
+
+.pulse-node {
+  animation: radar-pulse 2s infinite ease-in-out;
+}
+
+/* Custom Scrollbars */
 ::-webkit-scrollbar {
-  width: 4px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 240, 255, 0.35);
 }
