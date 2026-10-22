@@ -6,6 +6,13 @@ VORAX transforms commodity WiFi signals into real-time spatial awareness: human 
 
 Built for enterprise-grade deployment across security, industrial safety, and healthcare verticals.
 
+<p align="center">
+  <img src="assets/vorax-tactical-radar-simulation.png" alt="VORAX Tactical Radar Simulation Console" width="100%" />
+</p>
+<p align="center">
+  <em>Real-time 4-node multi-static CSI tactical radar simulation: 17-point skeletal pose tracking, sub-meter multilateration, geofence breach telemetry, and contactless vital signs monitoring (final production hardware build underway).</em>
+</p>
+
 ---
 
 ## What VORAX Does
@@ -27,54 +34,20 @@ No camera feed. No PII. No wearables. Privacy-by-design.
 
 VORAX exploits **WiFi Channel State Information (CSI)** — the per-subcarrier complex amplitude and phase data embedded in every 802.11n packet. When a human moves in a space, they disturb the multipath propagation of RF signals in physically deterministic ways. VORAX captures, sanitizes, and decodes those disturbances in real time.
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                   TIER 1: SENSOR EDGE NODES                     │
-│  ESP32-S3 × N  —  64-subcarrier CSI @ 200 Hz  —  UDP Multicast │
-└──────────────────────────────┬──────────────────────────────────┘
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────────┐
-│               TIER 2: RUST HIGH-THROUGHPUT DSP CORE             │
-│  Zero-copy ingest → SIMD phase unwrap → Hampel/Fresnel filter   │
-│  Latency target: < 1.2 ms packet-to-tensor                      │
-└──────────────────────────────┬──────────────────────────────────┘
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────────┐
-│              TIER 3: SPATIAL & ML INFERENCE                     │
-│  Dynamic path: 3D Voxel Grid → Temporal CNN → 17-pt Skeleton    │
-│  Vitals path:  VMD + CWT → BPM / HRV / Respiratory Rate        │
-│  Runtime: ONNX + TensorRT / OpenVINO on Rockchip RK3588 NPU    │
-└──────────────────────────────┬──────────────────────────────────┘
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────────┐
-│           TIER 4: INTEGRATION & 3D VISUALIZATION                │
-│  WebGPU / Three.js dashboard · gRPC · WebSockets · Protobuf     │
-│  MQTT / ROS2 · SIA DC-09 · ONVIF Profile M                     │
-└─────────────────────────────────────────────────────────────────┘
-```
+<p align="center">
+  <img src="assets/vorax-sensing-concept.jpg" alt="VORAX Through-Wall WiFi CSI Spatial Sensing Concept" width="100%" />
+</p>
 
----
+### Pipeline Architecture
 
-## Repository Structure
+<p align="center">
+  <img src="assets/vorax-architecture-pipeline.jpg" alt="VORAX 4-Tier Spatial Intelligence Processing Pipeline" width="100%" />
+</p>
 
-```
-vorax/
-├── firmware/        # ESP32-S3 ESP-IDF firmware (C/C++)
-├── core/            # Rust DSP ingest & signal processing engine
-├── inference/       # ML training pipeline & ONNX export (Python)
-├── dashboard/       # Real-time 3D visualization (React + Three.js)
-├── infra/           # Docker, deployment & gateway configuration
-└── docs/            # Technical architecture & blueprint documents
-    ├── 01-SYSTEM-ARCHITECTURE.md
-    ├── 02-DSP-AND-SIGNAL-PROCESSING.md
-    ├── 03-MACHINE-LEARNING-AND-SPATIAL-LOCALIZATION.md
-    ├── 04-SECURITY-AND-WAREHOUSE-DEPLOYMENT.md
-    ├── 05-COMMERCIAL-PITCH-AND-ROI.md
-    └── 06-DEVELOPMENT-ROADMAP.md
-```
+* **Tier 1: Sensor Edge Nodes** — ESP32-S3 sensor mesh capturing 64-subcarrier OFDM CSI at 200 Hz with microsecond timestamp sync and UDP multicast streaming.
+* **Tier 2: Rust DSP Processing Engine** — Zero-copy ring buffer with SIMD AVX-2 accelerated phase unwrapping, Hampel/Fresnel filtering, and Doppler STFT generation (< 1.2 ms packet-to-tensor latency).
+* **Tier 3: Spatial & Neural Inference** — 3D neural voxel grid with Temporal CNN for 17-point skeletal pose estimation alongside VMD and CWT contactless vital sign extraction (BPM, HRV, respiratory rate).
+* **Tier 4: Tactical 3D Digital Twin & Enterprise APIs** — Real-time WebGPU / Three.js spatial radar console with enterprise connectors for gRPC, WebSockets, Protobuf, MQTT, ROS2, and ONVIF Profile M.
 
 ---
 
@@ -130,7 +103,9 @@ VORAX is **privacy-by-design**:
 
 ## Status
 
-> 🚀 **Phase 4 & ML Pose Distillation Complete — Preparing Phase 5 Field Pilots**
+> 🚀 **Phase 4 & ML Pose Distillation Complete — Final Production Hardware Build Underway**
+>
+> 🌐 **Interactive Tactical Console**: Explore the live simulation at [vorax-bice.vercel.app](https://vorax-bice.vercel.app)
 
 ---
 
